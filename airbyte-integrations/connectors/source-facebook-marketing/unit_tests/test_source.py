@@ -58,6 +58,14 @@ class TestSourceFacebookMarketing:
         api.assert_called_once_with(account_id="123", access_token="TOKEN")
         logger_mock.info.assert_called_once_with(f"Select account {api.return_value.account}")
 
+    def test_check_connection_future_date_range(self, api, config, logger_mock):
+        config["start_date"] = "2219-10-10T00:00:00"
+        config["end_date"] = "2219-10-11T00:00:00"
+        assert SourceFacebookMarketing().check_connection(logger_mock, config=config) == (
+            False,
+            "Date range can not be in the future.",
+        )
+
     def test_check_connection_end_date_before_start_date(self, api, config, logger_mock):
         config["start_date"] = "2019-10-10T00:00:00"
         config["end_date"] = "2019-10-09T00:00:00"
@@ -89,7 +97,7 @@ class TestSourceFacebookMarketing:
     def test_streams(self, config, api):
         streams = SourceFacebookMarketing().streams(config)
 
-        assert len(streams) == 16
+        assert len(streams) == 29
 
     def test_spec(self):
         spec = SourceFacebookMarketing().spec()
