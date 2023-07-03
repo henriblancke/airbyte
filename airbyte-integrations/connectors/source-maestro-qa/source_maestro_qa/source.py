@@ -56,7 +56,8 @@ class MaestroQAExportStream(MaestroQAStream, ABC):
             yield from reader
 
     def wait_for_job(self, export_id: str, headers: Mapping[str, Any]) -> str:
-        time.sleep(1)
+        # job status: 10 requests per second allowed, restricting to 5 per second
+        time.sleep(0.2)
         job_status = "requested"
         export_url = urljoin(self.url_base, "get-export-data")
         headers = {**headers, "exportId": export_id}
@@ -78,8 +79,9 @@ class MaestroQAExportStream(MaestroQAStream, ABC):
 
     def create_export_job(self, path: str, headers: Mapping[str, Any], json: Mapping[str, Any]) -> Optional[str]:
         try:
+            # create export: one request per second allowed
+            time.sleep(1)
             url = urljoin(self.url_base, path)
-            logger.info(headers)
             response = self._send_http_request("POST", url, headers=headers, json=json)
             return response.json()["exportId"]
         except requests.exceptions.HTTPError as e:
@@ -92,7 +94,6 @@ class MaestroQAExportStream(MaestroQAStream, ABC):
         stream_slice: Mapping[str, Any] = None,
         stream_state: Mapping[str, Any] = None,
     ) -> Iterable[Mapping[str, Any]]:
-
         path = self.path(stream_state=stream_state, stream_slice=stream_slice)
         headers = self.request_headers(stream_state=stream_state, stream_slice=stream_slice)
         json = self.request_body_json(stream_state=stream_state, stream_slice=stream_slice)
