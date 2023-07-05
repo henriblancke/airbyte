@@ -11,29 +11,53 @@ from abc import ABC
 from contextlib import closing
 from typing import Any, Iterable, List, Mapping, Optional, Tuple
 from urllib.parse import urljoin
+from airbyte_cdk.sources.streams.availability_strategy import AvailabilityStrategy
 
 import pendulum
 import requests
 from airbyte_cdk.models import SyncMode
-from airbyte_cdk.sources import AbstractSource
+from airbyte_cdk.sources import AbstractSource, Source
 from airbyte_cdk.sources.streams import Stream
 from airbyte_cdk.sources.streams.http import HttpStream
 from airbyte_cdk.sources.streams.http.requests_native_auth import TokenAuthenticator
+from airbyte_cdk.sources.streams.http.availability_strategy import HttpAvailabilityStrategy
 
 logger = logging.getLogger("airbyte")
 
 BASE_URL = "https://app.maestroqa.com/api/v1/"
 
 
+class MaestroQAAvailabilityStrategy(HttpAvailabilityStrategy):
+    def check_availability(
+        self,
+        stream: Stream,
+        logger: logging.Logger,
+        source: Optional[Source],
+    ) -> Tuple[bool, Optional[str]]:
+        return True, None
+
+
 class MaestroQAStream(HttpStream, ABC):
     url_base = BASE_URL
     http_method = "POST"
+
+    def request_headers(
+        self, stream_state: Mapping[str, Any], stream_slice: Mapping[str, Any] = None, next_page_token: Mapping[str, Any] = None
+    ) -> Mapping[str, Any]:
+        return {
+            "Content-Type": "application/json",
+            "User-Agent": "airbyte/source-maestro-qa",
+        }
 
     def next_page_token(self, response: requests.Response) -> Optional[Mapping[str, Any]]:
         return super().next_page_token(response)
 
     def parse_response(self, response: requests.Response, **kwargs) -> Iterable[Mapping]:
         return response.json()["data"]
+
+    @property
+    def availability_strategy(self) -> AvailabilityStrategy:
+        return MaestroQAAvailabilityStrategy()
 
 
 class MaestroQAExportStream(MaestroQAStream, ABC):
